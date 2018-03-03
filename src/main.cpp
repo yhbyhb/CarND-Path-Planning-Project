@@ -202,7 +202,7 @@ int main() {
   }
 
   int lane = 1;
-  double ref_vel = 49.5; // mph
+  double ref_vel = 0; // mph
 
   h.onMessage([&map_waypoints_x,&map_waypoints_y,&map_waypoints_s,&map_waypoints_dx,&map_waypoints_dy,&lane,&ref_vel](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length,
                      uWS::OpCode opCode) {
@@ -248,6 +248,8 @@ int main() {
               car_s = end_path_s;
             }
 
+            bool too_close = false;
+
             //find ref_v to use
             for (int i = 0; i < sensor_fusion.size(); i++)
             {
@@ -266,10 +268,19 @@ int main() {
                 {
                   //Do some logic here, lower reference velocity so we don't crash into the car in front of us, could
                   // also flag to try to change lanes.
-                  ref_vel = 29.5; //mph
-                  //too_close = true;
+                  //ref_vel = 29.5; //mph
+                  too_close = true;
                 }
               }
+            }
+
+            if (too_close)
+            {
+              ref_vel -= 0.224;
+            }
+            else if (ref_vel < 49.5)
+            {
+              ref_vel += .224;
             }
 
 
