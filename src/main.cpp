@@ -245,6 +245,16 @@ int main() {
           // Provided previous path point size.
           int prev_size = previous_path_x.size();
 
+          cout << "\033[2J\033[1;1H";
+          cout << endl;
+          cout << "current car_x : " << car_x 
+               << " car_y : " << car_y
+               << " car_s : " << car_s
+               << " car_d : " << car_d
+               << " car_yaw : " << car_yaw
+               << " car_speed : " << car_speed
+               << endl;
+
           if (prev_size > 0)
           {
             car_s = end_path_s;
@@ -259,16 +269,12 @@ int main() {
             float d = sensor_fusion[i][6];
             int sensor_lane = -1;
 
-            if ( d > 0 && d < 4 ) {
+            if ( d < 4 ) {
               sensor_lane = 0;
-            } else if ( d > 4 && d < 8 ) {
+            } else if ( d < 8 ) {
               sensor_lane = 1;
-            } else if ( d > 8 && d < 12 ) {
+            } else if ( d < 12 ) {
               sensor_lane = 2;
-            }
-
-            if (sensor_lane < 0) {
-              continue;
             }
 
             double vx = sensor_fusion[i][3];
@@ -290,7 +296,11 @@ int main() {
             }
           }
 
+          cout << "ahead,\tleft,\tright" << endl;
+          cout << ahead << ",\t" << left << ",\t" << right << endl;
+
           // behavior planning
+          cout << "behavior : ";
           const double speed_limit = 49.5;
           const double speed_delta = .224;
           if ( ahead ) { // Car ahead
@@ -298,13 +308,16 @@ int main() {
             {
               // if there is no car left and there is a left lane.
               lane--; // Change lane left.
+              cout << "change lane left : " << lane << endl;
             } else if ( !right && lane != 2 )
             {
               // if there is no car right and there is a right lane.
               lane++; // Change lane right.
+              cout << "change lane right : " << right << endl;
             } else
             {
               ref_vel -= speed_delta;
+              cout << "keep lane, speed down ref_vel : " << ref_vel << endl;
             }
           }
           else
@@ -313,11 +326,17 @@ int main() {
               if ( ( lane == 0 && !right ) || ( lane == 2 && !left ) )
               {
                 lane = 1; // Back to center.
+                cout << "change lane center" << endl;
               }
             }
             if ( ref_vel < speed_limit )
             {
               ref_vel += speed_delta;
+              cout << "keep lane, speed up ref_vel : " << ref_vel << endl;
+            }
+            else
+            {
+              cout << "keep lane, maintain speed ref_vel : " << ref_vel << endl;
             }
           }
 
