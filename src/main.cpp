@@ -323,10 +323,10 @@ int main() {
           }
 
           cout << std::fixed << std::setw( 11 ) << std::setprecision( 6 );
-          cout << "      \t     left,\t    center,\t     right" << endl;
+          cout << "      \t     left,\t   center,\t    right" << endl;
           cout << "ahead \t" << ahead_left_speed  << ",\t" << ahead_center_speed << ",\t" << ahead_right_speed << endl;
           cout << "      \t" << "         "        << ",\t" << ref_vel << endl;
-          cout << "behind\t" << behind_right_speed << ",\t" << behind_center_speed << ",\t" << behind_right_speed << endl;
+          cout << "behind\t" << behind_left_speed << ",\t" << behind_center_speed << ",\t" << behind_right_speed << endl;
           
           // behavior planning
           cout << "behavior : ";
