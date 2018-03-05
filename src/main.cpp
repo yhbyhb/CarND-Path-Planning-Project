@@ -312,7 +312,7 @@ int main() {
                 if (check_car_s < car_s )
                 {
                   distance = car_s - check_car_s;
-                  if (distance  < 15)
+                  if (distance  < 20)
                     behind |= true;
                   speed = check_speed;
                 }
@@ -356,13 +356,16 @@ int main() {
           cout << "behavior : ";
           const double speed_limit = 49.5;
           const double speed_delta = .224;
-          if ( ahead_center ) { // Car ahead_center
+          if ( ahead_center ) 
+          { // Car ahead_center
+            bool lane_changed = false;
             if ( !ahead_left && lane > 0 )
             {
               if( !behind_left && ref_vel >= behind_left_speed)
               {
                 // if there is no car left and there is a left lane.
-                lane--; // Change lane left.
+                lane -= 1; // Change lane left.
+                lane_changed = true;
                 cout << "change lane left : " << lane << endl;
               }
             } else if ( !ahead_right && lane != 2 )
@@ -370,10 +373,13 @@ int main() {
               if ( !behind_right && ref_vel >= behind_right_speed)
               {
                 // if there is no car right and there is a right lane.
-                lane++; // Change lane right.
+                lane += 1; // Change lane right.
+                lane_changed = true;
                 cout << "change lane right : " << lane << endl;
               }  
-            } else
+            }
+
+            if (!lane_changed)
             {
               ref_vel = max(ref_vel - speed_delta, ahead_center_speed);
               cout << "keep lane, ref_vel : " << ref_vel << ", ahead_center_speed :" << ahead_center_speed << endl;
