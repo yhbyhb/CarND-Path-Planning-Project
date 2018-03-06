@@ -249,7 +249,7 @@ int main() {
           cout << "\033[2J\033[1;1H";
           cout << endl;
           cout << "prev size : " << prev_size << endl;
-          cout << "current car_x : " << car_x 
+          cout << "current car_x : " << car_x
                << " car_y : " << car_y
                << " car_s : " << car_s
                << " car_d : " << car_d
@@ -297,22 +297,22 @@ int main() {
 
             check_car_s += ((double)prev_size * 0.02 * check_speed);
 
-            auto check_ahead = [&](bool& ahead, double& distance, double& speed) 
+            auto check_ahead = [&](bool& ahead, double& distance, double& speed)
               {
                 if (check_car_s > car_s )
                 {
-                  distance = check_car_s - car_s; 
+                  distance = check_car_s - car_s;
                   if (distance < 30)
                     ahead |= true;
                   speed = check_speed;
                 }
               };
-            auto check_behind = [&](bool& behind, double& distance, double& speed) 
+            auto check_behind = [&](bool& behind, double& distance, double& speed)
               {
                 if (check_car_s < car_s )
                 {
                   distance = car_s - check_car_s;
-                  if (distance  < 20)
+                  if (distance  < 30)
                     behind |= true;
                   speed = check_speed;
                 }
@@ -321,15 +321,15 @@ int main() {
             if ( sensor_lane == lane )
             {
               check_ahead(ahead_center, ahead_center_distance, ahead_center_speed);
-              check_behind(behind_center, behind_center_distance, behind_center_speed);                          
+              check_behind(behind_center, behind_center_distance, behind_center_speed);
             } else if ( sensor_lane - lane == -1 )
             {
               check_ahead(ahead_left, ahead_left_distance, ahead_left_speed);
-              check_behind(behind_left, behind_left_distance, behind_left_speed);              
+              check_behind(behind_left, behind_left_distance, behind_left_speed);
             } else if ( sensor_lane - lane == 1 )
             {
               check_ahead(ahead_right, ahead_right_distance, ahead_right_speed);
-              check_behind(behind_right, behind_right_distance, behind_right_speed);              
+              check_behind(behind_right, behind_right_distance, behind_right_speed);
             }
           }
 
@@ -339,7 +339,7 @@ int main() {
           cout << "ahead \t" << ahead_left_speed  << ",\t" << ahead_center_speed << ",\t" << ahead_right_speed << endl;
           cout << "      \t" << "        "        << ",\t" << ref_vel << endl;
           cout << "behind\t" << behind_left_speed << ",\t" << behind_center_speed << ",\t" << behind_right_speed << endl;
-          
+
           cout << "=== distance ====" << endl;
           cout << "      \t    left,\t  center,\t   right" << endl;
           cout << "ahead \t" << ahead_left_distance  << ",\t" << ahead_center_distance << ",\t" << ahead_right_distance << endl;
@@ -356,7 +356,7 @@ int main() {
           cout << "behavior : ";
           const double speed_limit = 49.5;
           const double speed_delta = .224;
-          if ( ahead_center ) 
+          if ( ahead_center )
           { // Car ahead_center
             bool lane_changed = false;
             if ( !ahead_left && lane > 0 )
@@ -376,12 +376,12 @@ int main() {
                 lane += 1; // Change lane right.
                 lane_changed = true;
                 cout << "change lane right : " << lane << endl;
-              }  
+              }
             }
 
             if (!lane_changed)
             {
-              ref_vel = max(ref_vel - speed_delta, ahead_center_speed);
+              ref_vel = ref_vel - speed_delta;
               cout << "keep lane, ref_vel : " << ref_vel << ", ahead_center_speed :" << ahead_center_speed << endl;
             }
           }
