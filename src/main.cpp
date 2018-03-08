@@ -10,7 +10,6 @@
 #include "Eigen-3.3/Eigen/QR"
 #include "json.hpp"
 #include "spline.h"
-#include "cost.h"
 
 using namespace std;
 
@@ -262,12 +261,81 @@ int main() {
             car_s = end_path_s;
           }
 
-          bool ahead_center = false;
-          bool ahead_left = false;
-          bool ahead_right = false;
-          bool behind_center = false;
-          bool behind_left = false;
-          bool behind_right = false;
+          map<int, double> speed_map; //key is id of sensor
+          map<int, double> s_pos_map;
+          map<int, int> lane_map;
+
+          vector<int> ahead_center_ids;
+          vector<int> ahead_left_ids;
+          vector<int> ahead_right_ids;
+          vector<int> behind_center_ids;
+          vector<int> behind_left_ids;
+          vector<int> behind_right_ids;
+
+          for ( int i = 0; i < sensor_fusion.size(); i++ )
+          {
+            float d = sensor_fusion[i][6];
+            int sensor_lane = -1;
+
+            sensor_lane = (int)(d / 4);
+
+            double vx = sensor_fusion[i][3];
+            double vy = sensor_fusion[i][4];
+            double check_speed = sqrt(vx * vx + vy * vy);
+            double check_car_s = sensor_fusion[i][5];
+            check_car_s += ((double)prev_size * 0.02 * check_speed);
+
+            int id = sensor_fusion[i][0];
+            speed_map[id] = check_speed;
+            s_pos_map[id] = check_car_s;
+            lane_map[id] = sensor_lane;
+
+            auto check_ahead_behind = [&](vector<int>& ahead_ids, vector<int>& behind_ids)
+                {
+                  double distance = check_car_s - car_s;
+                  if (distance > 0 )
+                  {
+                    ahead_ids.push_back(id);
+                  }
+                  else
+                  {
+                    behind_ids.push_back(id);
+                  }           
+                };
+
+            if ( sensor_lane == lane )
+            {
+              check_ahead_behind(ahead_center_ids, behind_center_ids);
+            } else if ( sensor_lane - lane == -1 )
+            {
+              check_ahead_behind(ahead_left_ids, behind_left_ids);
+            } else if ( sensor_lane - lane == 1 )
+            {
+              check_ahead_behind(ahead_right_ids, behind_right_ids);
+            }
+          }
+
+          auto find_min_distance = [&](vector<int>& ids, int& id, double& speed, double& distance)
+          {
+            for (auto& i : ids)
+            {
+              double s_pos = s_pos_map[i];
+              double diff = abs(s_pos - car_s);
+              if (diff < distance)
+              {
+                id = i;
+                distance = diff;
+                speed = speed_map[id];
+              }
+            }
+          };
+
+          int ahead_center_id = -1;
+          int ahead_left_id = -1;
+          int ahead_right_id = -1;
+          int behind_center_id = -1;
+          int behind_left_id = -1;
+          int behind_right_id = -1;
 
           double ahead_center_speed = -1;
           double ahead_left_speed = -1;
@@ -283,55 +351,12 @@ int main() {
           double behind_left_distance = 999;
           double behind_right_distance = 999;
 
-          for ( int i = 0; i < sensor_fusion.size(); i++ )
-          {
-            float d = sensor_fusion[i][6];
-            int sensor_lane = -1;
-
-            sensor_lane = (int)(d / 4);
-
-            double vx = sensor_fusion[i][3];
-            double vy = sensor_fusion[i][4];
-            double check_speed = sqrt(vx * vx + vy * vy);
-            double check_car_s = sensor_fusion[i][5];
-
-            check_car_s += ((double)prev_size * 0.02 * check_speed);
-
-            auto check_ahead = [&](bool& ahead, double& distance, double& speed)
-              {
-                if (check_car_s > car_s )
-                {
-                  distance = check_car_s - car_s;
-                  if (distance < 30)
-                    ahead |= true;
-                  speed = check_speed;
-                }
-              };
-            auto check_behind = [&](bool& behind, double& distance, double& speed)
-              {
-                if (check_car_s < car_s )
-                {
-                  distance = car_s - check_car_s;
-                  if (distance  < 30)
-                    behind |= true;
-                  speed = check_speed;
-                }
-              };
-
-            if ( sensor_lane == lane )
-            {
-              check_ahead(ahead_center, ahead_center_distance, ahead_center_speed);
-              check_behind(behind_center, behind_center_distance, behind_center_speed);
-            } else if ( sensor_lane - lane == -1 )
-            {
-              check_ahead(ahead_left, ahead_left_distance, ahead_left_speed);
-              check_behind(behind_left, behind_left_distance, behind_left_speed);
-            } else if ( sensor_lane - lane == 1 )
-            {
-              check_ahead(ahead_right, ahead_right_distance, ahead_right_speed);
-              check_behind(behind_right, behind_right_distance, behind_right_speed);
-            }
-          }
+          find_min_distance(ahead_center_ids, ahead_center_id, ahead_center_speed, ahead_center_distance);
+          find_min_distance(ahead_left_ids, ahead_left_id, ahead_left_speed, ahead_left_distance);
+          find_min_distance(ahead_right_ids, ahead_right_id, ahead_right_speed, ahead_right_distance);
+          find_min_distance(behind_center_ids, behind_center_id, behind_center_speed, behind_center_distance);
+          find_min_distance(behind_left_ids, behind_left_id, behind_left_speed, behind_left_distance);
+          find_min_distance(behind_right_ids, behind_right_id, behind_right_speed, behind_right_distance);
 
           cout << std::fixed << std::setw( 11 ) << std::setprecision( 5 );
           cout << "=== Speed ====" << endl;
@@ -346,36 +371,46 @@ int main() {
           cout << "      \t" << "        "        << ",\t" << "" << endl;
           cout << "behind\t" << behind_left_distance << ",\t" << behind_center_distance << ",\t" << behind_right_distance << endl;
 
-          cout << "=== car exist ====" << endl;
+          cout << "=== car id ====" << endl;
           cout << "      \t    left,\t  center,\t   right" << endl;
-          cout << "ahead \t       " << ahead_left  << ",\t       " << ahead_center << ",\t       " << ahead_right << endl;
+          cout << "ahead \t       " << ahead_left_id  << ",\t       " << ahead_center_id << ",\t       " << ahead_right_id << endl;
           cout << "      \t       " << "        "        << ",\t" << "" << endl;
-          cout << "behind\t       " << behind_left << ",\t       " << behind_center << ",\t       " << behind_right << endl;
+          cout << "behind\t       " << behind_left_id << ",\t       " << behind_center_id << ",\t       " << behind_right_id << endl;
 
           // behavior planning
           cout << "behavior : ";
+          const int leftmost_lane = 0;
+          const int rightmost_lane = 2;
           const double speed_limit = 49.5;
           const double speed_delta = .224;
-          if ( ahead_center )
+          const double ahead_distance_limit = 30;
+          const double behind_distance_limit = 15;
+          bool lane_changed = false;
+          auto change_lane = [&](int direction)
+          {
+            cout << "change lane direction : " << direction;
+            lane -= direction; // Change lane left.
+            cout << ", result lane : " << lane << endl;
+            lane_changed = true;            
+          };
+
+          if ( ahead_center_distance <= ahead_distance_limit )
           { // Car ahead_center
-            bool lane_changed = false;
-            if ( !ahead_left && lane > 0 )
+            if ( ahead_left_distance > ahead_distance_limit && lane > leftmost_lane )
             {
-              if( !behind_left && ref_vel >= behind_left_speed)
+              if( behind_left_distance > behind_distance_limit && ref_vel >= behind_left_speed)
               {
                 // if there is no car left and there is a left lane.
-                lane -= 1; // Change lane left.
-                lane_changed = true;
-                cout << "change lane left : " << lane << endl;
+                // Change lane left.
+                change_lane(-1);
               }
-            } else if ( !ahead_right && lane != 2 )
+            } else if ( ahead_right_distance > ahead_distance_limit && lane != rightmost_lane )
             {
-              if ( !behind_right && ref_vel >= behind_right_speed)
+              if ( behind_right_distance > behind_distance_limit && ref_vel >= behind_right_speed)
               {
                 // if there is no car right and there is a right lane.
-                lane += 1; // Change lane right.
-                lane_changed = true;
-                cout << "change lane right : " << lane << endl;
+                // Change lane right.
+                change_lane(1);
               }
             }
 
@@ -387,15 +422,24 @@ int main() {
           }
           else
           {
-            if ( lane != 1 ) { // if we are not on the center lane.
-              if ( ( lane == 0 && !(ahead_right || behind_right) ) || ( lane == 2 && !(ahead_left || behind_left) ) )
-              {
-                lane = 1; // Back to center.
-                cout << "change lane center" << endl;
-              }
+            if (lane == leftmost_lane && (ahead_right_distance > ahead_distance_limit && behind_right_distance > behind_distance_limit))
+            {
+              // Change lane right.
+              change_lane(1);
+              lane += 1; 
+              lane_changed = true;                
             }
-
-            cout << "keep lane, ref_vel : " << ref_vel << ", speed_limit : " << speed_limit << endl;
+            if (lane == rightmost_lane && (ahead_left_distance  > ahead_distance_limit && behind_left_distance  > behind_distance_limit))
+            {
+              // Change lane left.
+              change_lane(-1);
+              // lane = 1; // Back to center.
+              // cout << "change lane center" << endl;
+            }
+            if (!lane_changed)
+            {
+              cout << "keep lane, ref_vel : " << ref_vel << ", speed_limit : " << speed_limit << endl;
+            }
             ref_vel = min(ref_vel + speed_delta, speed_limit);
           }
 
