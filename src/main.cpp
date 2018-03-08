@@ -291,14 +291,17 @@ int main() {
             double theta = atan2(vy, vx);
             auto predict_sd = getFrenet(x + vx * dt, y + vy * dt, theta, map_waypoints_x, map_waypoints_y);
 
+            int sensor_lane2 = (int)(predict_sd[1] / 4);
             cout << "sensor id : " << id
                  << ", s : " << check_car_s
                  << ", d : " << d
                  << ", lane : " << sensor_lane
                  << ", s(calc) : " << predict_sd[0]
                  << ", d(calc) : " << predict_sd[1]
-                 << ", lane(calc) : " << (int)(predict_sd[1] / 4)
+                 << ", lane(calc) : " << sensor_lane2
+                 << ", diff(lane) : " << sensor_lane - sensor_lane2
                  << endl;
+
             speed_map[id] = check_speed * 2.24; // m/s to mph
             s_pos_map[id] = check_car_s;
 
