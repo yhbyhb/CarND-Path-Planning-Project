@@ -205,7 +205,7 @@ int main() {
   int lane = 1;
   double ref_vel = 0; // mph
 
-  h.onMessage([&map_waypoints_x,&map_waypoints_y,&map_waypoints_s,&map_waypoints_dx,&map_waypoints_dy,&lane,&ref_vel](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length,
+  h.onMessage([&map_waypoints_x,&map_waypoints_y,&map_waypoints_s,&map_waypoints_dx,&map_waypoints_dy,&lane,&ref_vel, &max_s](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length,
    uWS::OpCode opCode) {
     // "42" at the start of the message means there's a websocket message event.
     // The 4 signifies a websocket message
@@ -242,23 +242,31 @@ int main() {
           // Sensor Fusion Data, a list of all other cars on the same side of the road.
           auto sensor_fusion = j[1]["sensor_fusion"];
 
+          const int leftmost_lane = 0;
+          const int rightmost_lane = 2;
+          const double speed_limit = 49.5;
+          const double speed_delta = .224;
+          const double ahead_distance_limit = 30;
+          const double behind_distance_limit = 30;
+
           // Provided previous path point size.
           int prev_size = previous_path_x.size();
 
           cout << std::fixed << std::setw( 7 ) << std::setprecision( 2 );
           cout << "\033[2J\033[1;1H";
-          cout << "current"
+          cout << "car's localization data"
                << " car_s : " << car_s
                << " car_d : " << car_d
                << " car_yaw : " << car_yaw
                << " car_speed : " << car_speed
                << endl;
-          cout << "current lane : " << lane << endl;
 
           if (prev_size > 0)
           {
             car_s = end_path_s;
+            cout << "Prev size : " << prev_size << ", car_s(end_path_s) : " << car_s << endl;
           }
+          cout << "current lane : " << lane << endl;
 
           map<int, double> speed_map; //key is id of sensor
           map<int, double> s_pos_map;
@@ -279,7 +287,7 @@ int main() {
             double y = sensor_fusion[i][2];
             double vx = sensor_fusion[i][3];
             double vy = sensor_fusion[i][4];
-            double check_car_s = sensor_fusion[i][5];
+            double sensor_s = sensor_fusion[i][5];
             double d = sensor_fusion[i][6];
 
             int sensor_lane = -1;
@@ -287,6 +295,18 @@ int main() {
 
             double check_speed = sqrt(vx * vx + vy * vy);
             double dt = (double)prev_size * 0.02;
+            double check_car_s = sensor_s;
+
+            if ( (car_s + ahead_distance_limit > max_s) && (check_car_s < ahead_distance_limit))
+            {
+                check_car_s += max_s;
+            }
+
+            if ( (car_s - behind_distance_limit < 0) && (check_car_s > max_s - behind_distance_limit))
+            {
+              check_car_s -= max_s;
+            }
+
             check_car_s += (dt * check_speed);
 
             double theta = atan2(vy, vx);
@@ -294,7 +314,7 @@ int main() {
 
             int sensor_lane2 = (int)(predict_sd[1] / 4);
             cout << "sensor id : " << id
-                 << ", s : " << check_car_s
+                 << ", s : " << check_car_s << "(" << sensor_s + (dt * check_speed) << ")"
                  << ", d : " << d
                  << ", lane : " << sensor_lane
                  << ", s(calc) : " << predict_sd[0]
@@ -302,6 +322,14 @@ int main() {
                  << ", lane(calc) : " << sensor_lane2
                  << ", diff(lane) : " << sensor_lane - sensor_lane2
                  << endl;
+
+            // sometimes sensor d comes with 0.0 then use calculated d data from getFrenet()
+            if (d == 0.0 && predict_sd[1] > 0)
+            {
+              d = predict_sd[1];
+              sensor_lane = sensor_lane2;
+              cout << "!!!! sensor d value is 0.0. so use calculated d : " << d << endl;
+            }
 
             speed_map[id] = check_speed * 2.24; // m/s to mph
             s_pos_map[id] = check_car_s;
@@ -403,12 +431,6 @@ int main() {
           // Behavior planning
           cout << endl << endl;
           cout << "<<< Behavior planning >>>" << endl;
-          const int leftmost_lane = 0;
-          const int rightmost_lane = 2;
-          const double speed_limit = 49.5;
-          const double speed_delta = .224;
-          const double ahead_distance_limit = 30;
-          const double behind_distance_limit = 15;
           bool lane_changed = false;
 
           // change lane and speed function.
@@ -428,13 +450,14 @@ int main() {
           { // if car is ahead
             if ( ahead_left_distance > ahead_distance_limit && lane > leftmost_lane )
             {
-              if( behind_left_distance > behind_distance_limit )
+              if( (behind_left_distance > behind_distance_limit) && (ref_vel >= behind_left_speed) )
               { // if there is no car left and there is a left lane.
                 change_lane(-1); // Change lane left.
               }
-            } else if ( ahead_right_distance > ahead_distance_limit && lane != rightmost_lane )
+            }
+            else if ( ahead_right_distance > ahead_distance_limit && lane != rightmost_lane )
             {
-              if ( behind_right_distance > behind_distance_limit )
+              if ( (behind_right_distance > behind_distance_limit) && (ref_vel >= behind_right_speed) )
               { // if there is no car right and there is a right lane.
                 change_lane(1); // Change lane right.
               }
