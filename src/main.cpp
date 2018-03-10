@@ -270,6 +270,7 @@ int main() {
           vector<int> behind_left_ids;
           vector<int> behind_right_ids;
 
+          // Predict adjacent cars s position and speed after previous path points * 0.02 sec later
           cout << "sensor fusion " << endl;
           for ( int i = 0; i < sensor_fusion.size(); i++ )
           {
@@ -305,6 +306,7 @@ int main() {
             speed_map[id] = check_speed * 2.24; // m/s to mph
             s_pos_map[id] = check_car_s;
 
+            // classify car into 6 category by combination of {ahead, behind} and {left, center, right}
             auto check_ahead_behind = [&](vector<int>& ahead_ids, vector<int>& behind_ids)
                 {
                   double distance = check_car_s - car_s;
@@ -366,6 +368,7 @@ int main() {
           double behind_left_distance = 999;
           double behind_right_distance = 999;
 
+          // find nearest cars and their speed.
           find_min_distance(ahead_center_ids, ahead_center_id, ahead_center_speed, ahead_center_distance);
           find_min_distance(ahead_left_ids, ahead_left_id, ahead_left_speed, ahead_left_distance);
           find_min_distance(ahead_right_ids, ahead_right_id, ahead_right_speed, ahead_right_distance);
@@ -373,6 +376,7 @@ int main() {
           find_min_distance(behind_left_ids, behind_left_id, behind_left_speed, behind_left_distance);
           find_min_distance(behind_right_ids, behind_right_id, behind_right_speed, behind_right_distance);
 
+          // display predicted circumstance. car ids, distances from our car and their speed.
           cout << endl << endl;
           cout << std::fixed << std::setw( 5 ) << std::setprecision( 2 );
           cout <<  "<<< Prediction "  << prev_size * 0.02 << "sec later >>>" << endl;
@@ -406,16 +410,22 @@ int main() {
           const double ahead_distance_limit = 30;
           const double behind_distance_limit = 15;
           bool lane_changed = false;
+
+          // change lane and speed function.
           auto change_lane = [&](int direction)
           {
-            cout << "change lane direction : " << direction;
+            cout << "change lane direction : " << direction << endl;
             lane += direction; // Change lane left.
-            cout << ", result lane : " << lane << endl;
             lane_changed = true;
+          };
+          auto change_speed = [&](double delta)
+          {
+            ref_vel = min(ref_vel + delta, speed_limit);
+            cout << "change speed with delta : " << delta << endl;
           };
 
           if ( ahead_center_distance <= ahead_distance_limit )
-          { // Car ahead_center
+          { // if car is ahead
             if ( ahead_left_distance > ahead_distance_limit && lane > leftmost_lane )
             {
               if( behind_left_distance > behind_distance_limit )
@@ -430,29 +440,28 @@ int main() {
               }
             }
 
-            // if (!lane_changed)
+            if (!lane_changed)
             { // Since car is ahead and we can't change lane, then keep lane and slow down.
-              ref_vel = ref_vel - speed_delta;
-              cout << "keep lane, ref_vel : " << ref_vel << ", ahead_center_speed :" << ahead_center_speed << endl;
+              change_speed(-speed_delta);
             }
           }
           else
           {
             if (lane == leftmost_lane && (ahead_right_distance > ahead_distance_limit && behind_right_distance > behind_distance_limit))
-            {
+            { // if car is leftmost lane and there are no cars ahead and right lane is empty enough to change lane.
               change_lane(1); // Change lane right.
             }
             if (lane == rightmost_lane && (ahead_left_distance  > ahead_distance_limit && behind_left_distance  > behind_distance_limit))
-            {
+            { // if car is rightmost lane and there are no cars ahead and left lane is empty enough to change lane.
               change_lane(-1); // Change lane left.
             }
             if (!lane_changed)
             {
               cout << "keep lane, ref_vel : " << ref_vel << endl;
             }
-            ref_vel = min(ref_vel + speed_delta, speed_limit);
+            change_speed(speed_delta);
           }
-          cout << "result lane : " << lane << endl;
+          cout << "result lane : " << lane << ", result ref_vel : " << ref_vel << endl;
 
           // Create a list of widely spaced (x,y) waypoints, evenly spaced at 30m
           // later we will interpolate these waypoints with a spline and fill it in with more points that control speed.
@@ -545,7 +554,7 @@ int main() {
 
           // Fill up the rest of our path planner after filling it with previous points, here we will always output 50 points
           for( int i = 1; i < 50 - prev_size; i++ ) {
-            double N = target_dist / (.02 * ref_vel / 2.24); //2.24 for m/s to mph
+            double N = target_dist / (.02 * ref_vel / 2.24); //2.24 for mph to m/s
             double x_point = x_add_on + target_x / N;
             double y_point = s(x_point);
 
