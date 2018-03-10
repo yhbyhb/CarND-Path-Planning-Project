@@ -1,4 +1,4 @@
-# **Project: Path Planning Project
+# **Project: Path Planning Project**
 [![Udacity - Self-Driving Car Engineer NanoDegree Program](https://s3.amazonaws.com/udacity-sdc/github/shield-carnd.svg)](http://www.udacity.com/drive)
 
 
@@ -17,7 +17,11 @@ I followed criteria of [project rubric](https://review.udacity.com/#!/rubrics/10
 I added `spline.h` for smooth acceleration of vehicle but it doesn't not require to added to `CMakeLists.txt`. The compilation is has no error.
 
 ### Valid Trajectories
-Here is the [video link]() of recording two rounds of given track.
+[//]: # (Image References)
+
+[result]: ./img/term3_p1_30min_driving.png "30 mins driving"
+
+![alt text][result]
 
 While driving about 30 minutes, the car kept all of the following.
 
@@ -27,6 +31,8 @@ While driving about 30 minutes, the car kept all of the following.
 - Car does not have collisions.
 - The car stays in its lane, except for the time between changing lanes.
 - The car is able to change lanes
+
+Here is the [youtube link](https://www.youtube.com/watch?v=zbTH357hVIY) of 30 minutes driving.
 
 ### Reflection
 All of my code for generating paths is in `line 236 ~ 598` in `main.cpp`. It is based on [Project Walkthrough and Q&A](https://classroom.udacity.com/nanodegrees/nd013/parts/6047fe34-d93c-4f50-8336-b70ef10cb4b2/modules/27800789-bc8e-4adc-afe0-ec781e82ceae/lessons/23add5c6-7004-47ad-b169-49a5d7b1c1cb/concepts/3bdfeb8c-8dd6-49a7-9d08-beff6703792d) of class.
